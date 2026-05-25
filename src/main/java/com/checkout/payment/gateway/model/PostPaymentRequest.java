@@ -1,8 +1,10 @@
 package com.checkout.payment.gateway.model;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import java.io.Serializable;
 
+@Builder
 public class PostPaymentRequest implements Serializable {
 
   @JsonProperty("card_number_last_four")

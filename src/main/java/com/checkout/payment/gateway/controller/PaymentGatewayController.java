@@ -1,15 +1,21 @@
 package com.checkout.payment.gateway.controller;
 
 import com.checkout.payment.gateway.model.PostPaymentResponse;
+import com.checkout.payment.gateway.model.ProcessPaymentRequest;
 import com.checkout.payment.gateway.service.PaymentGatewayService;
 import java.util.UUID;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController("api")
+@RestController
+@RequestMapping("/api")
 public class PaymentGatewayController {
 
   private final PaymentGatewayService paymentGatewayService;
@@ -23,7 +29,19 @@ public class PaymentGatewayController {
     return new ResponseEntity<>(paymentGatewayService.getPaymentById(id), HttpStatus.OK);
   }
 
+  @PostMapping("/process-payment")
+  public ResponseEntity<PostPaymentResponse> processPayment(@Valid @RequestBody
+    ProcessPaymentRequest paymentRequest) {
+//    int lastFourDigits = Math.toIntExact(paymentRequest.getCardNumber() % 10000);
+//    PostPaymentRequest postPaymentRequest = PostPaymentRequest.builder()
+//        .cardNumberLastFour(lastFourDigits)
+//        .expiryMonth(paymentRequest.getExpiryMonth())
+//        .expiryYear(paymentRequest.getExpiryYear())
+//        .currency(paymentRequest.getCurrency())
+//        .amount(paymentRequest.getAmount())
+//        .cvv(paymentRequest.getCvv())
+//        .build();
+    return new ResponseEntity<>(paymentGatewayService.processPayment(paymentRequest), HttpStatus.OK);
 
-
-
+  }
 }
