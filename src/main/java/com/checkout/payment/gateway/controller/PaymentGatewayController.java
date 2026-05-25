@@ -32,15 +32,6 @@ public class PaymentGatewayController {
   @PostMapping("/process-payment")
   public ResponseEntity<PostPaymentResponse> processPayment(@Valid @RequestBody
     ProcessPaymentRequest paymentRequest) {
-//    int lastFourDigits = Math.toIntExact(paymentRequest.getCardNumber() % 10000);
-//    PostPaymentRequest postPaymentRequest = PostPaymentRequest.builder()
-//        .cardNumberLastFour(lastFourDigits)
-//        .expiryMonth(paymentRequest.getExpiryMonth())
-//        .expiryYear(paymentRequest.getExpiryYear())
-//        .currency(paymentRequest.getCurrency())
-//        .amount(paymentRequest.getAmount())
-//        .cvv(paymentRequest.getCvv())
-//        .build();
     return new ResponseEntity<>(paymentGatewayService.processPayment(paymentRequest), HttpStatus.OK);
 
   }

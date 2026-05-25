@@ -46,15 +46,34 @@ public class PaymentGatewayService {
     BankProcessPaymentResponse bankResponse = bankClient.getPaymentStatus(bankRequest);
 
     int lastFourDigits = Integer.parseInt(cardNumber.substring(cardNumber.length() - 4));
+    UUID paymentId = UUID.randomUUID();
 
+    if(!bankResponse.isAuthorized()) {
+      PostPaymentResponse paymentResponse = buildPostPaymentResponse(paymentId, PaymentStatus.REJECTED,
+          lastFourDigits, paymentRequest.getExpiryMonth(), paymentRequest.getExpiryYear(),
+          paymentRequest.getAmount(), paymentRequest.getCurrency());
+      paymentsRepository.add(paymentResponse);
+      return paymentResponse;
+    }
+
+    PostPaymentResponse paymentResponse = buildPostPaymentResponse(paymentId, PaymentStatus.AUTHORIZED, lastFourDigits,
+        paymentRequest.getExpiryMonth(), paymentRequest.getExpiryYear(), paymentRequest.getAmount(),
+        paymentRequest.getCurrency());
+    paymentsRepository.add(paymentResponse);
+    return paymentResponse;
+  }
+
+  private PostPaymentResponse buildPostPaymentResponse(UUID paymentId,
+      PaymentStatus paymentStatus, int lastFourDigits, int expiryMonth, int expiryYear, int amount,
+      String currency) {
     return PostPaymentResponse.builder()
-        .id(bankResponse.getAuthorizationCode())
-        .status(PaymentStatus.AUTHORIZED)
+        .id(paymentId)
+        .status(paymentStatus)
         .cardNumberLastFour(lastFourDigits)
-        .expiryMonth(paymentRequest.getExpiryMonth())
-        .expiryYear(paymentRequest.getExpiryYear())
-        .amount(paymentRequest.getAmount())
-        .currency(paymentRequest.getCurrency())
+        .expiryMonth(expiryMonth)
+        .expiryYear(expiryYear)
+        .amount(amount)
+        .currency(currency)
         .build();
   }
 }
