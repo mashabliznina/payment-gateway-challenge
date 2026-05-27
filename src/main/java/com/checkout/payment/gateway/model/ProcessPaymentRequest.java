@@ -19,7 +19,6 @@ public class ProcessPaymentRequest {
   @Pattern(regexp = "\\d+", message = "Card number must contain only digits")
   String cardNumber;
 
-  @NotNull(message = "Expiry month is required and must not be null or empty")
   @Min(value = 1, message = "Expiry month must be between 1 and 12")
   @Max(value = 12, message = "Expiry month must be between 1 and 12")
   Integer expiryMonth;
