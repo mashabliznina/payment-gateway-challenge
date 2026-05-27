@@ -43,7 +43,7 @@ public class PaymentGatewayService {
         .cvv(paymentRequest.getCvv())
         .build();
 
-    BankProcessPaymentResponse bankResponse = bankClient.getPaymentStatus(bankRequest);
+    BankProcessPaymentResponse bankResponse = bankClient.makePayment(bankRequest);
 
     int lastFourDigits = Integer.parseInt(cardNumber.substring(cardNumber.length() - 4));
     UUID paymentId = UUID.randomUUID();

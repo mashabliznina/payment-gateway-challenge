@@ -7,14 +7,16 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
+import lombok.Builder;
 import lombok.Value;
 
+@Builder
 @Value
 public class ProcessPaymentRequest {
 
-  @NotBlank
-  @Size(min = 14, max = 19, message = "Min Max")
-  @Pattern(regexp = "\\d+")
+  @NotBlank(message = "Card number is required and must not be null or empty")
+  @Size(min = 14, max = 19, message = "Card number must be between 14 and 19 characters")
+  @Pattern(regexp = "\\d+", message = "Card number must contain only digits")
   String cardNumber;
 
   @NotNull(message = "Expiry month is required and must not be null or empty")
@@ -35,8 +37,8 @@ public class ProcessPaymentRequest {
   @Positive(message = "Amount must be positive")
   Integer amount;
 
-  @NotBlank
-  @Size(min = 3, max = 4)
-  @Pattern(regexp = "\\d+")
+  @NotBlank(message = "CVV is required and must not be null or empty")
+  @Size(min = 3, max = 4, message = "CVV must be between 3 and 4 characters")
+  @Pattern(regexp = "\\d+", message = "CVV must contain only digits")
   String cvv;
 }

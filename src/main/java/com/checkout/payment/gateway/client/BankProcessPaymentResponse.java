@@ -1,11 +1,13 @@
 package com.checkout.payment.gateway.client;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import lombok.Builder;
 import lombok.Value;
 import java.io.Serializable;
 import java.util.UUID;
 
 @Value
+@Builder
 public class BankProcessPaymentResponse implements Serializable {
   @JsonProperty("authorized")
   boolean authorized;

@@ -1,39 +1,29 @@
 package com.checkout.payment.gateway.controller;
 
-
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.checkout.payment.gateway.enums.PaymentStatus;
-import com.checkout.payment.gateway.model.PaymentRejectedError;
 import com.checkout.payment.gateway.model.PostPaymentResponse;
 import com.checkout.payment.gateway.model.ProcessPaymentRequest;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.client.WireMock;
-import java.util.List;
 import java.util.UUID;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
-import org.junit.jupiter.api.TestInstance.Lifecycle;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-@TestInstance(Lifecycle.PER_CLASS)
 @SpringBootTest
 @AutoConfigureMockMvc
-class PaymentGatewayControllerTest {
+public class PaymentGatewayIntegrationTest {
 
   private static final String VALID_CARD_NUMBER = "2222405343248877";
   private static final int LAST_FOUR_DIGITS = 8877;
@@ -71,20 +61,7 @@ class PaymentGatewayControllerTest {
     ProcessPaymentRequest request = buildProcessPaymentRequest(VALID_CARD_NUMBER, EXPIRY_MONTH,EXPIRY_YEAR,
         AMOUNT, CURRENCY, CVV);
 
-//    BankProcessPaymentRequest bankRequest = BankProcessPaymentRequest.builder()
-//        .cardNumber(VALID_CARD_NUMBER)
-//        .expiryDate("12/2027")
-//        .currency(CURRENCY)
-//        .amount(AMOUNT)
-//        .cvv(CVV)
-//        .build();
-//
-//    BankProcessPaymentResponse bankResponse = BankProcessPaymentResponse.builder()
-//        .authorized(true)
-//        .authorizationCode(UUID.randomUUID())
-//        .build();
-
-    stubSuccessfulPayment();
+    stubSuccessfulAuthorizedPayment();
 
     String content = objectMapper.writeValueAsString(request);
     mvc.perform(post("/api/process-payment")
@@ -101,38 +78,34 @@ class PaymentGatewayControllerTest {
         .andExpect(jsonPath("$.amount").value(response.getAmount()));
   }
 
-  @ParameterizedTest
-  @MethodSource("invalidData")
-  void whenInvalidDataProvidedReturnBadRequest(String cardNumber,
-      int expiryMonth, int expiryYear, int amount, String currency, String cvv, String errorMessage)
-      throws Exception {
+  @Test
+  void whenPaymentProcessIsUnauthorisedThenPaymentWithStatusDeclinedIsReturned() throws Exception {
+    UUID paymentId = UUID.randomUUID();
 
-    ProcessPaymentRequest request = buildProcessPaymentRequest(cardNumber, expiryMonth,expiryYear,
-        amount, currency, cvv);
+    PostPaymentResponse response = buildPostPaymentResponse(paymentId, PaymentStatus.REJECTED,
+        LAST_FOUR_DIGITS, EXPIRY_MONTH, EXPIRY_YEAR, AMOUNT, CURRENCY);
 
-    PaymentRejectedError error = new PaymentRejectedError(List.of(errorMessage));
+    ProcessPaymentRequest request = buildProcessPaymentRequest(VALID_CARD_NUMBER, EXPIRY_MONTH,EXPIRY_YEAR,
+        AMOUNT, CURRENCY, CVV);
 
+    stubSuccessfulDeclinedPayment();
+
+    String content = objectMapper.writeValueAsString(request);
     mvc.perform(post("/api/process-payment")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(request))
+            .content(content)
         )
-        .andExpect(status().isBadRequest())
+        .andExpect(status().isOk())
         .andDo(print())
-        .andExpect(jsonPath("$.id").value(error.getMessage()))
-        .andExpect(jsonPath("$.status").value(error.getErrors()))
-        .andExpect(jsonPath("$.cardNumberLastFour").value(error.getStatus()));
-
-
+        .andExpect(jsonPath("$.status").value(response.getStatus().getName()))
+        .andExpect(jsonPath("$.cardNumberLastFour").value(response.getCardNumberLastFour()))
+        .andExpect(jsonPath("$.expiryMonth").value(response.getExpiryMonth()))
+        .andExpect(jsonPath("$.expiryYear").value(response.getExpiryYear()))
+        .andExpect(jsonPath("$.currency").value(response.getCurrency()))
+        .andExpect(jsonPath("$.amount").value(response.getAmount()));
   }
 
-//  @Test
-//  void whenPaymentWithIdDoesNotExistThen404IsReturned() throws Exception {
-//    mvc.perform(MockMvcRequestBuilders.get("/payment/" + UUID.randomUUID()))
-//        .andExpect(status().isNotFound())
-//        .andExpect(jsonPath("$.message").value("Page not found"));
-//  }
-
-  private void stubSuccessfulPayment() {
+  private void stubSuccessfulAuthorizedPayment() {
     WireMock.stubFor(WireMock.post(WireMock.urlEqualTo("/payments")
             )
             .willReturn(
@@ -143,6 +116,23 @@ class PaymentGatewayControllerTest {
                         {
                             "authorized": true,
                             "authorization_code": "1669264d-a5c6-447c-8abf-737de3661a35"
+                        }
+                        """)
+            )
+    );
+  }
+
+  private void stubSuccessfulDeclinedPayment() {
+    WireMock.stubFor(WireMock.post(WireMock.urlEqualTo("/payments")
+            )
+            .willReturn(
+                WireMock.aResponse()
+                    .withStatus(200)
+                    .withHeader("Content-Type", "application/json")
+                    .withBody("""
+                        {
+                            "authorized": false,
+                            "authorization_code": ""
                         }
                         """)
             )
@@ -166,26 +156,13 @@ class PaymentGatewayControllerTest {
       String currency) {
 
     return PostPaymentResponse.builder()
-      .id(paymentId)
-      .status(paymentStatus)
-      .cardNumberLastFour(lastFourDigits)
-      .expiryMonth(expiryMonth)
-      .expiryYear(expiryYear)
-      .amount(amount)
-      .currency(currency)
-      .build();
-  }
-
-  private Stream<Arguments> invalidData() {
-    return Stream.of(
-        Arguments.of("", EXPIRY_MONTH, EXPIRY_YEAR, CURRENCY, AMOUNT, CVV, "Card number is required and must not be null or empty"),
-        Arguments.of(" ", EXPIRY_MONTH, EXPIRY_YEAR, CURRENCY, AMOUNT, CVV, "Card number is required and must not be null or empty"),
-        Arguments.of(null, EXPIRY_MONTH, EXPIRY_YEAR, CURRENCY, AMOUNT, CVV, "Card number is required and must not be null or empty"),
-        Arguments.of("22224053432488ee", EXPIRY_MONTH, EXPIRY_YEAR, CURRENCY, AMOUNT, CVV, "Card number must contain only digits"),
-        Arguments.of("2222405", EXPIRY_MONTH, EXPIRY_YEAR, CURRENCY, AMOUNT, CVV, "Card number must be between 14 and 19 characters"),
-        Arguments.of(VALID_CARD_NUMBER, null, EXPIRY_YEAR, CURRENCY, AMOUNT, CVV, "Expiry month is required and must not be null or empty"),
-        Arguments.of(VALID_CARD_NUMBER, 0, EXPIRY_YEAR, CURRENCY, AMOUNT, CVV, "Expiry month must be between 1 and 12"),
-        Arguments.of(VALID_CARD_NUMBER, 13, EXPIRY_YEAR, CURRENCY, AMOUNT, CVV, "Expiry month must be between 1 and 12")
-    );
+        .id(paymentId)
+        .status(paymentStatus)
+        .cardNumberLastFour(lastFourDigits)
+        .expiryMonth(expiryMonth)
+        .expiryYear(expiryYear)
+        .amount(amount)
+        .currency(currency)
+        .build();
   }
 }

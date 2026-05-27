@@ -13,7 +13,7 @@ public class BankClient {
     this.restTemplate = restTemplate;
   }
 
-  public BankProcessPaymentResponse getPaymentStatus(BankProcessPaymentRequest request) {
+  public BankProcessPaymentResponse makePayment(BankProcessPaymentRequest request) {
 
     String url = "http://localhost:8080/payments";
 
