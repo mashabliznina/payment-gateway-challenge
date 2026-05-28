@@ -1,12 +1,24 @@
-# Instructions for candidates
+# Payment Gateway
+This project implements a payment gateway service that securely processes card payments through an external bank API.
+The service validates payment requests, sends payment instructions to an external bank, stores processed payments, and allows retrieval of payment details by ID.
 
-This is the Java version of the Payment Gateway challenge. If you haven't already read this [README.md](https://github.com/cko-recruitment/) on the details of this exercise, please do so now.
+## How It Works
+The service:
+- Validates incoming payment requests;
+- Sends payment details to an external bank provider;
+- Processes authorized and rejected payment responses;
+- Stores payment details in an in-memory repository;
+- Returns masked card information (last four digits only);
+- Allows retrieving payment details using a payment ID;
+- Handles bank failures and persistence errors gracefully.
 
 ## Requirements
-- JDK 17
+- JDK 21
 - Docker
 
-## Template structure
+## Setup & Run Locally
+### 1. Clone the repository
+### 2. Clone the repository
 
 src/ - A skeleton SpringBoot Application
 
@@ -18,7 +30,9 @@ imposters/ - contains the bank simulator configuration. Don't change this
 
 docker-compose.yml - configures the bank simulator
 
-
+### 3. Running tests 
+#### 3.1 To run tests with gradlew via terminal make sure you're using java 21:
+```export JAVA_HOME=$(/usr/libexec/java_home -v 21)```
 ## API Documentation
 For documentation openAPI is included, and it can be found under the following url: **http://localhost:8090/swagger-ui/index.html**
 
