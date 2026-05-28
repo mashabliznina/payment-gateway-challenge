@@ -50,7 +50,7 @@ public class PaymentGatewayService {
 
     try {
       bankResponse = bankClient.makePayment(bankRequest);
-    } catch (BankProcessingException exception) {
+    } catch (RuntimeException exception) {
       LOG.error("Bank is unavailable, payment can not be processed");
       throw new BankProcessingException("Unable to process payment with bank");
     }
@@ -61,9 +61,8 @@ public class PaymentGatewayService {
           paymentRequest.getAmount(), paymentRequest.getCurrency());
       try {
         paymentsRepository.add(paymentResponse);
-      } catch (PaymentPersistenceException exception) {
-        LOG.error("Payment with id {} has not been saved", paymentId);
-        throw new PaymentPersistenceException("Failed to save payment");
+      } catch (RuntimeException exception) {
+        logAndThrowPaymentPersistenceException(paymentId);
       }
       return paymentResponse;
     }
@@ -71,7 +70,12 @@ public class PaymentGatewayService {
     PostPaymentResponse paymentResponse = buildPostPaymentResponse(paymentId, PaymentStatus.AUTHORIZED, lastFourDigits,
         paymentRequest.getExpiryMonth(), paymentRequest.getExpiryYear(), paymentRequest.getAmount(),
         paymentRequest.getCurrency());
-    paymentsRepository.add(paymentResponse);
+    try{
+      paymentsRepository.add(paymentResponse);
+    } catch (RuntimeException ex) {
+      logAndThrowPaymentPersistenceException(paymentId);
+    }
+
     return paymentResponse;
   }
 
@@ -87,5 +91,10 @@ public class PaymentGatewayService {
         .amount(amount)
         .currency(currency)
         .build();
+  }
+
+  private void logAndThrowPaymentPersistenceException(UUID paymentId) {
+    LOG.error("Payment with id {} has not been saved", paymentId);
+    throw new PaymentPersistenceException("Failed to save payment");
   }
 }

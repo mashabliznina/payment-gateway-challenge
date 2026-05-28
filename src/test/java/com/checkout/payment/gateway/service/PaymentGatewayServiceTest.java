@@ -145,7 +145,7 @@ public class PaymentGatewayServiceTest {
     ProcessPaymentRequest request = buildProcessPaymentRequest();
 
     when(bankClient.makePayment(any()))
-        .thenThrow(new BankProcessingException("Bank unavailable"));
+        .thenThrow(new RuntimeException());
 
     BankProcessingException exception = assertThrows(BankProcessingException.class,
             () -> paymentGatewayService.processPayment(request));
