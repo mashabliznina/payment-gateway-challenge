@@ -37,4 +37,18 @@ public class CommonExceptionHandler {
         .status(HttpStatus.BAD_REQUEST)
         .body(new PaymentRejectedError(errors));
   }
-}
+
+  @ExceptionHandler(BankProcessingException.class)
+  public ResponseEntity<ErrorResponse> handleBankProcessingException(BankProcessingException exception) {
+    return ResponseEntity
+        .status(HttpStatus.BAD_GATEWAY)
+        .body(new ErrorResponse(exception.getMessage()));
+    }
+
+  @ExceptionHandler(PaymentPersistenceException.class)
+  public ResponseEntity<ErrorResponse> handleBankProcessingException(PaymentPersistenceException exception) {
+    return ResponseEntity
+        .status(HttpStatus.INTERNAL_SERVER_ERROR)
+        .body(new ErrorResponse(exception.getMessage()));
+  }
+  }

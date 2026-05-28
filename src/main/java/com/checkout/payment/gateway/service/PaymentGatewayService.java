@@ -4,7 +4,9 @@ import com.checkout.payment.gateway.client.BankClient;
 import com.checkout.payment.gateway.client.BankProcessPaymentRequest;
 import com.checkout.payment.gateway.client.BankProcessPaymentResponse;
 import com.checkout.payment.gateway.enums.PaymentStatus;
+import com.checkout.payment.gateway.exception.BankProcessingException;
 import com.checkout.payment.gateway.exception.EventProcessingException;
+import com.checkout.payment.gateway.exception.PaymentPersistenceException;
 import com.checkout.payment.gateway.model.PostPaymentResponse;
 import com.checkout.payment.gateway.model.ProcessPaymentRequest;
 import com.checkout.payment.gateway.repository.PaymentsRepository;
@@ -35,6 +37,8 @@ public class PaymentGatewayService {
     String expiryDate =
         String.format("%02d/%d", paymentRequest.getExpiryMonth(), paymentRequest.getExpiryYear());
     String cardNumber = paymentRequest.getCardNumber();
+    int lastFourDigits = Integer.parseInt(cardNumber.substring(cardNumber.length() - 4));
+    UUID paymentId = UUID.randomUUID();
     BankProcessPaymentRequest bankRequest = BankProcessPaymentRequest.builder()
         .cardNumber(cardNumber)
         .expiryDate(expiryDate)
@@ -42,17 +46,25 @@ public class PaymentGatewayService {
         .amount(paymentRequest.getAmount())
         .cvv(paymentRequest.getCvv())
         .build();
+    BankProcessPaymentResponse bankResponse;
 
-    BankProcessPaymentResponse bankResponse = bankClient.makePayment(bankRequest);
-
-    int lastFourDigits = Integer.parseInt(cardNumber.substring(cardNumber.length() - 4));
-    UUID paymentId = UUID.randomUUID();
+    try {
+      bankResponse = bankClient.makePayment(bankRequest);
+    } catch (BankProcessingException exception) {
+      LOG.error("Bank is unavailable, payment can not be processed");
+      throw new BankProcessingException("Unable to process payment with bank");
+    }
 
     if(!bankResponse.isAuthorized()) {
       PostPaymentResponse paymentResponse = buildPostPaymentResponse(paymentId, PaymentStatus.REJECTED,
           lastFourDigits, paymentRequest.getExpiryMonth(), paymentRequest.getExpiryYear(),
           paymentRequest.getAmount(), paymentRequest.getCurrency());
-      paymentsRepository.add(paymentResponse);
+      try {
+        paymentsRepository.add(paymentResponse);
+      } catch (PaymentPersistenceException exception) {
+        LOG.error("Payment with id {} has not been saved", paymentId);
+        throw new PaymentPersistenceException("Failed to save payment");
+      }
       return paymentResponse;
     }
 
